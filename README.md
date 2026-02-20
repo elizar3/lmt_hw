@@ -1,4 +1,3 @@
-````md
 # Threat Classification & Interception API
 
 Containerized Python (3.12+) FastAPI service that receives radar reports, classifies threats, and selects a feasible / cost-effective interception option using base + interceptor data stored in a MySQL database.
