@@ -1,0 +1,22 @@
+// AI
+{
+  "name": "lmt_hw",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "api",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [8000, 3307],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["-q"],
+        "python.analysis.typeCheckingMode": "basic"
+      }
+    }
+  }
+}
