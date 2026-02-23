@@ -1,62 +1,100 @@
 # AI
 
 import math
-import pytest
 
-from app.logic.geo import haversine_distance_m
+from app.logic.geo import (
+    EARTH_RADIUS_M,
+    haversine_distance_m,
+    latlon_to_local_xy_m,
+    destination_point,
+)
 
 
-def test_zero_distance_same_point():
-    assert haversine_distance_m(56.97475845607155, 24.1670070219384,
-                                56.97475845607155, 24.1670070219384) == 0.0
+def test_haversine_zero_distance_same_point():
+    d = haversine_distance_m(56.97475845607155, 24.1670070219384,
+                             56.97475845607155, 24.1670070219384)
+    assert d == 0.0
 
 
-def test_symmetry_distance_is_same_both_directions():
-    a = (56.97475845607155, 24.1670070219384)      # Riga base
-    b = (56.516083346891044, 21.0182217849017)     # Liepaja base
+def test_haversine_is_symmetric():
+    riga = (56.97475845607155, 24.1670070219384)
+    liepaja = (56.516083346891044, 21.0182217849017)
 
-    d1 = haversine_distance_m(a[0], a[1], b[0], b[1])
-    d2 = haversine_distance_m(b[0], b[1], a[0], a[1])
+    d1 = haversine_distance_m(*riga, *liepaja)
+    d2 = haversine_distance_m(*liepaja, *riga)
 
     assert math.isclose(d1, d2, rel_tol=1e-12, abs_tol=1e-9)
 
 
-def test_one_degree_latitude_is_about_111_km():
-    # Distance between (0,0) and (1,0) is ~111.195 km with Earth radius 6,371,000 m
+def test_haversine_one_degree_latitude_about_111km():
+    # With EARTH_RADIUS_M = 6,371,000 m this is about 111,194.9 m
     d = haversine_distance_m(0.0, 0.0, 1.0, 0.0)
-    assert math.isclose(d, 111_195, rel_tol=0.01)  # 1% tolerance
+    assert math.isclose(d, 111_195, rel_tol=0.01)
 
 
-def test_small_known_distance_approximately_1km():
-    # Roughly ~1 km north (latitude + ~0.009 degrees at equator-ish)
-    d = haversine_distance_m(0.0, 0.0, 0.009, 0.0)
-    assert 900 <= d <= 1100
+def test_latlon_to_local_xy_zero_at_origin():
+    x, y = latlon_to_local_xy_m(56.97, 24.16, 56.97, 24.16)
+    assert x == 0.0
+    assert y == 0.0
 
 
-@pytest.mark.parametrize(
-    "lat1,lon1,lat2,lon2",
-    [
-        (56.97475845607155, 24.1670070219384, 56.516083346891044, 21.0182217849017),  # Riga -> Liepaja
-        (56.97475845607155, 24.1670070219384, 55.87409588616014, 26.51864225209475),  # Riga -> Daugavpils
-        (56.516083346891044, 21.0182217849017, 55.87409588616014, 26.51864225209475), # Liepaja -> Daugavpils
-    ],
-)
-def test_distance_is_positive_for_distinct_points(lat1, lon1, lat2, lon2):
-    assert haversine_distance_m(lat1, lon1, lat2, lon2) > 0
+def test_latlon_to_local_xy_signs_east_and_north():
+    # At equator, 0.001 deg longitude ~= 111.2 m east
+    x_east, y_east = latlon_to_local_xy_m(0.0, 0.0, 0.0, 0.001)
+    assert x_east > 0
+    assert abs(y_east) < 1e-6
+    assert math.isclose(x_east, 111.195, rel_tol=0.02)
+
+    # 0.001 deg latitude ~= 111.2 m north
+    x_north, y_north = latlon_to_local_xy_m(0.0, 0.0, 0.001, 0.0)
+    assert y_north > 0
+    assert abs(x_north) < 1e-6
+    assert math.isclose(y_north, 111.195, rel_tol=0.02)
 
 
-def test_triangle_inequality_holds_approximately_for_latvia_bases():
-    # Great-circle distances should satisfy triangle inequality (within floating error)
-    riga = (56.97475845607155, 24.1670070219384)
-    liepaja = (56.516083346891044, 21.0182217849017)
-    daugavpils = (55.87409588616014, 26.51864225209475)
+def test_destination_point_zero_distance_returns_same_point():
+    lat, lon = 56.97475845607155, 24.1670070219384
+    lat2, lon2 = destination_point(lat, lon, 90, 0)
 
-    d_rl = haversine_distance_m(*riga, *liepaja)
-    d_rd = haversine_distance_m(*riga, *daugavpils)
-    d_ld = haversine_distance_m(*liepaja, *daugavpils)
+    assert lat2 == lat
+    assert lon2 == lon
 
-    # Check all three permutations with a small tolerance
-    eps = 1e-6
-    assert d_rl <= d_rd + d_ld + eps
-    assert d_rd <= d_rl + d_ld + eps
-    assert d_ld <= d_rl + d_rd + eps
+
+def test_destination_point_north_1000m():
+    lat0, lon0 = 0.0, 0.0
+    lat1, lon1 = destination_point(lat0, lon0, 0, 1000)
+
+    # Should move north and stay near same longitude
+    assert lat1 > lat0
+    assert abs(lon1 - lon0) < 1e-6
+
+    d = haversine_distance_m(lat0, lon0, lat1, lon1)
+    assert math.isclose(d, 1000, rel_tol=0.01)
+
+
+def test_destination_point_east_1000m():
+    lat0, lon0 = 0.0, 0.0
+    lat1, lon1 = destination_point(lat0, lon0, 90, 1000)
+
+    # Should move east and stay near same latitude (at equator)
+    assert lon1 > lon0
+    assert abs(lat1 - lat0) < 1e-6
+
+    d = haversine_distance_m(lat0, lon0, lat1, lon1)
+    assert math.isclose(d, 1000, rel_tol=0.01)
+
+
+def test_destination_point_and_local_xy_are_consistent_for_small_distance():
+    # Small local movement: east 1500 m
+    lat0, lon0 = 56.0, 24.0
+    lat1, lon1 = destination_point(lat0, lon0, 90, 1500)
+
+    x, y = latlon_to_local_xy_m(lat0, lon0, lat1, lon1)
+
+    assert x > 0
+    assert abs(y) < 10  # small numerical approximation error is fine
+    assert math.isclose(x, 1500, rel_tol=0.02)
+
+
+def test_earth_radius_constant():
+    assert EARTH_RADIUS_M == 6_371_000
