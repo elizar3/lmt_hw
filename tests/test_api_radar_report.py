@@ -32,7 +32,7 @@ INTERCEPTOR_DRONE = {
 FIGHTER_JET = {
     "name": "Fighter jet",
     "speed_ms": 700,
-    "range_m": 3500,
+    "range_m": 350000,
     "max_altitude_m": 15000,
     "cost_model": "per_minute",
     "cost_value_eur": 1000,

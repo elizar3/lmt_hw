@@ -31,7 +31,7 @@ ON DUPLICATE KEY UPDATE latitude=VALUES(latitude), longitude=VALUES(longitude);
 
 INSERT INTO interceptors (name, speed_ms, range_m, max_altitude_m, cost_model, cost_value_eur) VALUES
 ('Interceptor drone', 80, 30000, 2000, 'fixed', 10000),
-('Fighter jet', 700, 3500, 15000, 'per_minute', 1000),
+('Fighter jet', 700, 350000, 15000, 'per_minute', 1000),
 ('Rocket', 1500, 100000, 30000, 'fixed', 300000),
 ('50Cal', 900, 2000, 2000, 'per_shot', 1)
 ON DUPLICATE KEY UPDATE speed_ms=VALUES(speed_ms), range_m=VALUES(range_m),

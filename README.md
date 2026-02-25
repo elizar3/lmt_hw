@@ -14,6 +14,7 @@ Containerized Python (3.12+) FastAPI service for receiving radar reports, classi
 
 * Docker Engine / Docker Desktop
 * Docker Compose v2 (`docker compose ...`)
+* VS Code (optional, for Dev Containers + debugging)
 
 ## Run
 
@@ -92,7 +93,7 @@ Optional host MySQL connection:
 For reports that are not `not_threat`, the decision engine:
 
 1. Checks altitude feasibility (`target altitude <= interceptor max altitude`)
-2. Solves moving-target interception in the horizontal plane using target speed + heading
+2. Solves moving-target interception using target speed + heading (+ altitude)
 3. Rejects options that exceed interceptor range before intercept
 4. Estimates cost
 5. Selects the lowest-cost viable option (tie-breakers: faster intercept, then shorter interceptor travel)
@@ -110,17 +111,36 @@ The selected result includes:
 
 Targets are assumed to:
 
-* keep a constant horizontal speed (`speed_ms`)
+* keep a constant speed (`speed_ms`)
 * keep a constant heading (`heading_deg`)
 * keep a constant altitude (`altitude_m`)
 
 Interceptors are assumed to:
 
 * launch immediately
-* travel at constant speed (their max speed)
+* launch at max speed
 * steer directly toward the intercept point
 
-Intercept math is 2D (horizontal plane). Altitude is handled as a separate feasibility constraint using interceptor max altitude.
+Intercept calculation uses a simple 3D model:
+
+* base/interceptor start altitude is assumed to be `0 m`
+* target altitude is constant
+* target vertical speed is assumed to be `0 m/s`
+
+## Engagement tracking (single target)
+
+Radar passes data for **one object / threat at a time**.
+
+To avoid launching a new interceptor every second for the same target, the API keeps a simple in-memory active engagement state:
+
+* first actionable report -> launch interceptor
+* next reports -> track the already launched interceptor
+* once predicted intercept time is reached -> mark as intercepted
+
+Notes:
+
+* state is in-memory (reset if API restarts)
+* this is intentionally simple for the single-target case
 
 ## Cost model assumptions (implementation)
 
@@ -134,11 +154,9 @@ To keep the decision deterministic and easy to test:
 Interceptors:
 
 * Interceptor drone: speed `80 m/s`, range `30,000 m`, max altitude `2,000 m`, cost `10,000 EUR`
-* Fighter jet: speed `700 m/s`, range `3,500 m`, max altitude `15,000 m`, cost `1,000 EUR / minute`
+* Fighter jet: speed `700 m/s`, range `350,000 m`, max altitude `15,000 m`, cost `1,000 EUR / minute`
 * Rocket: speed `1,500 m/s`, range `100,000 m`, max altitude `30,000 m`, cost `300,000 EUR`
 * 50Cal: speed `900 m/s`, range `2,000 m`, max altitude `2,000 m`, cost `1 EUR / shot`
-
-> Note: Fighter jet range is currently based on the provided task values and may be revised later.
 
 Bases:
 
@@ -148,7 +166,7 @@ Bases:
 
 ## Radar report format
 
-Radar sends a new report every 1 second:
+Radar sends a new report every 1 second for the same tracked object:
 
 ```json
 {
@@ -169,6 +187,11 @@ Current:
 * `GET /debug/db-data` (optional helper) -> shows bases + inventory currently read from MySQL
 * `POST /radar/report` -> returns classification + chosen base + chosen interceptor + predicted interception coordinates
 
+Optional debug helpers (if enabled in your local version):
+
+* `GET /engagement/active` -> shows current in-memory engagement state
+* `POST /engagement/reset` -> clears current in-memory engagement state
+
 Example request:
 
 ```json
@@ -181,3 +204,15 @@ Example request:
   "report_time": 0
 }
 ```
+
+## Simulator (manual testing)
+
+A simple script is included to simulate one moving target with constant speed, heading, and altitude, and send radar data every second.
+
+Example:
+
+```bash
+python scripts/simulate_single_target.py --mode balanced
+```
+
+`balanced` mode tries to generate scenarios that more often exercise different interceptor types (50Cal, Interceptor drone, Fighter jet, Rocket).

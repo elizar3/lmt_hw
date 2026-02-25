@@ -24,8 +24,12 @@ class InterceptDecision(BaseModel):
     interceptor_travel_distance_m: float
     estimated_cost_eur: float
 
+    intercept_altitude_m: Optional[float] = None
+    current_interceptor_altitude_m: Optional[float] = None
+
 class DecisionResponse(BaseModel):
     # overall result for one radar report
     classification: str
     decision: Optional[InterceptDecision] = None
     reason: str
+    action: Optional[str] = None

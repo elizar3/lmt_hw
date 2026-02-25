@@ -29,7 +29,7 @@ INTERCEPTOR_DRONE = {
 FIGHTER_JET = {
     "name": "Fighter jet",
     "speed_ms": 700,
-    "range_m": 3500,
+    "range_m": 350000,
     "max_altitude_m": 15000,
     "cost_model": "per_minute",
     "cost_value_eur": 1000,
@@ -85,10 +85,13 @@ def test_solve_intercept_time_stationary_target():
     t = solve_intercept_time_s(
         target_x=1000,
         target_y=0,
+        target_z=0,
         target_vx=0,
         target_vy=0,
+        target_vz=0,
         interceptor_speed_ms=100,
     )
+    assert t is not None
     assert math.isclose(t, 10.0, rel_tol=1e-9)
 
 
@@ -97,8 +100,10 @@ def test_solve_intercept_time_target_too_fast_moving_away():
     t = solve_intercept_time_s(
         target_x=1000,
         target_y=0,
+        target_z=0,
         target_vx=100,
         target_vy=0,
+        target_vz=0,
         interceptor_speed_ms=50,
     )
     assert t is None
@@ -108,8 +113,10 @@ def test_solve_intercept_time_target_already_at_base():
     t = solve_intercept_time_s(
         target_x=0,
         target_y=0,
+        target_z=0,
         target_vx=25,
         target_vy=10,
+        target_vz=0,
         interceptor_speed_ms=80,
     )
     assert t == 0.0
@@ -244,12 +251,13 @@ def test_choose_interception_liepaja_close_target_prefers_50cal():
     assert result["decision"]["estimated_cost_eur"] == 100.0
 
 
-def test_choose_interception_daugavpils_high_altitude_uses_local_rocket():
-    # Daugavpils has no fighter jet. High altitude removes drone + 50Cal.
+def test_choose_interception_daugavpils_very_high_altitude_uses_local_rocket():
+    # Daugavpils has no fighter jet.
+    # Very high altitude removes drone + 50Cal + fighter jet (fighter max altitude 15000).
     # Rocket should be selected from Daugavpils.
     report = {
-        "speed_ms": 100,      # threat
-        "altitude_m": 5000,   # too high for drone/50Cal
+        "speed_ms": 100,
+        "altitude_m": 20000,  # above fighter jet max altitude
         "heading_deg": 180,
         "latitude": 55.87409588616014,
         "longitude": 26.51864225209475,

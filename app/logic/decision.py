@@ -13,7 +13,7 @@ def target_velocity_xy(speed_ms, heading_deg):
 
 
 # solve intercept time t (seconds) for a moving target
-def solve_intercept_time_s(target_x, target_y, target_vx, target_vy, interceptor_speed_ms):
+def solve_intercept_time_s(target_x, target_y, target_z, target_vx, target_vy, target_vz, interceptor_speed_ms):
 
     if interceptor_speed_ms <= 0:
         return None
@@ -21,9 +21,9 @@ def solve_intercept_time_s(target_x, target_y, target_vx, target_vy, interceptor
     # AI
     # Quadratic coefficients from:
     # |target + v_target * t| = interceptor_speed * t
-    a = target_vx**2 + target_vy**2 - interceptor_speed_ms**2   # target speed vs interceptor speed
-    b = 2 * (target_x * target_vx + target_y * target_vy)       # target position vs velocity
-    c = target_x**2 + target_y**2                               # initial squared distance to target
+    a = target_vx**2 + target_vy**2 + target_vz**2 - interceptor_speed_ms**2        # target speed vs interceptor speed
+    b = 2 * (target_x * target_vx + target_y * target_vy + target_z * target_vz)    # target position vs velocity
+    c = target_x**2 + target_y**2 + target_z**2                                     # initial squared distance to target
 
     # target is at the base
     if c == 0:
@@ -88,9 +88,11 @@ def evaluate_candidate(base, interceptor, report):
     # base -> target vector at t=0
     rel_x = -target_to_base_x
     rel_y = -target_to_base_y
+    rel_z = report["altitude_m"]
+    target_vz = 0
 
     # 4. solve intercept time
-    t = solve_intercept_time_s(rel_x, rel_y, target_vx, target_vy, interceptor["speed_ms"])
+    t = solve_intercept_time_s(rel_x, rel_y, rel_z, target_vx, target_vy, target_vz, interceptor["speed_ms"])
     if t is None:
         return None  # cannot intercept
     
