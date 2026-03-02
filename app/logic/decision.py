@@ -29,9 +29,11 @@ def solve_intercept_time_s(target_x, target_y, target_z, target_vx, target_vy, t
     if c == 0:
         return 0.0
     
+    # near-zero number
     eps = 1e-9
 
     # near linear case when target speed is close to interceptor speed
+    # using linear formula instead of quadratic
     if abs(a) < eps:
         if abs(b) < eps:
             return None  # no solution, target moving at interceptor speed but not towards/away
